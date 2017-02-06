@@ -15,74 +15,145 @@
 # limitations under the License.
 #
 import webapp2
+import cgi
 import re
 
-def build_page(content):
-    form = """<form method='post'>
-    <h1>SIGNUP</h1><br>
-    <label>Username: <input type='text' name='usr_name'></input></label><br>
-    <label>Password: <input type='password' name='pass'></input></label><br>
-    <label>Confirm Password: <input type='password' name='pass_confirm'></input></label><br>
-    <label>Email (Optional): <input type='text' name='email'></input></label><br>
-    <input type='submit'><br>
-    </form>"""
-    return form
+signup_form="""
+<!DOCTYPE html>
+<html>
+  <head>
+	<title>User Signup</title>
+	</head>
+	<body>
+		<h1>Signup</h1>
+		<form method="post">
+            <table>
+                <tr>
+                    <td>
+        			    <label for "username">Username</label>
+                    </td>
+                    <td>
+                        <input type="text" name="username" value="%(username)s">
+        				<span style="color: red">%(e_name)s</span>
+                    </td>
+    			</tr>
+                <tr>
+                    <td>
+    			        <label for "password">Password</label>
+                    </td>
+                    <td>
+                        <input type="password" name="password">
+    				    <span style="color: red">%(e_pass)s</span>
+                    </td>
+    		    </tr>
+                <tr>
+                    <td>
+    			        <label for "verify">Verify Password</label>
+                    </td>
+                    <td>
+                        <input type="password" name="verify">
+    				    <span style="color: red">%(e_verify)s</span>
+                    </td>
+    			</tr>
+                <tr>
+                    <td>
+    			        <label for "email">Email (optional)</label>
+                    </td>
+                    <td>
+                        <input type="text" name="email" value="%(email)s">
+    				    <span style="color: red">%(e_email)s</span>
+                    </td>
+    			</tr>
+            </table>
+			<input type="submit">
+		</form>
+	</body>
+</html>
+"""
 
-def error_page_usr(content):
-    form = """<form method='post'>
-    <h1>SIGNUP</h1><br>
-    <label>Username: <input type='text' name='usr_name'></input>Your Username is invalid</label><br>
-    <label>Password: <input type='password' name='pass'></input></label><br>
-    <label>Confirm Password: <input type='password' name='pass_confirm'></input></label><br>
-    <label>Email (Optional): <input type='text' name='email'></input></label><br>
-    <input type='submit'><br>
-    </form>"""
-    return form
+welcom_form="""
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Unit 2 Signup - Welcome</title>
+	</head>
+	<body>
+		<h2>Welcome, %s!</h2>
+	</body>
+</html>
+"""
 
-def error_page_pass(content):
-    form = """<form method='post'>
-    <h1>SIGNUP</h1><br>
-    <label>Username: <input type='text' name='usr_name'></input></label><br>
-    <label>Password: <input type='password' name='pass'></input>Your Password is invalid %s</label><br>
-    <label>Confirm Password: <input type='password' name='pass_confirm'></input></label><br>
-    <label>Email (Optional): <input type='text' name='email'></input></label><br>
-    <input type='submit'><br>
-    </form>"""
-    return form
+def escape_html(s):
+	return cgi.escape(s, quote = True)
 
-usr_test = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
-pass_test = re.compile(r"^.{3,20}$")
-#email_test = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+USER_RE = re.compile(r"^[a-zA-z0-9_-]{3,20}$")
+PASS_RE = re.compile(r"^.{3,20}$")
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 
-def val_usr(username):
-    return username and usr_test.match(username)
+def valid_name(s):
+	return USER_RE.match(s)
 
-def val_pass(password):
-    return password and pass_test.match(password)
+def valid_pass(s):
+	return PASS_RE.match(s)
 
-class MainHandler(webapp2.RequestHandler):
-    def get(self):
-        form = build_page("")
-        return self.response.write(form)
+def valid_email(s):
+	if s == "":
+		return True
+	else:
+		return EMAIL_RE.match(s)
 
-    def post(self):
-        username = self.request.get("usr_name")
-        welcome = "<h1>Welcome, " + username + "!</h1>"
-        password = self.request.get("pass")
-        #confirm_password = self.request.get("pass_confirm")
-        #email = self.request.get("email")
-        if not val_usr(username):
-            usr_err = error_page_usr("")
-            return self.response.write(usr_err)
-        else:
-            return self.response.write(welcome)
+def match_pass(p1, p2):
+	return p1 == p2
 
-        if not val_pass(password):
-            pass_err = error_page_pass("")
-            return self.response.write(pass_err % test)
-        else:
-            return self.response.write(welcome)
+class SignupHandler(webapp2.RequestHandler):
+	def write_form(self, username="", email="",
+		           e_name="", e_pass="", e_verify="", e_email=""):
+		self.response.out.write(signup_form % {"username": escape_html(username),
+			                             "email": escape_html(email),
+			                             "e_name": e_name,
+			                             "e_pass": e_pass,
+			                             "e_verify": e_verify,
+			                             "e_email": e_email})
+
+	def get(self):
+		self.write_form()
+
+	def post(self):
+		user_name = self.request.get('username')
+		user_pass = self.request.get('password')
+		user_verify = self.request.get('verify')
+		user_email = self.request.get('email')
+
+		name = valid_name(user_name)
+		password = valid_pass(user_pass)
+		verify = valid_pass(user_verify)
+		email = valid_email(user_email)
+
+		e_name = ''
+		e_pass = ''
+		e_verify = ''
+		e_email = ''
+
+		if not name:
+			e_name = 'That is not a valid name'
+		if not password:
+			e_pass = 'That is not a valid password'
+		if not match_pass(user_pass, user_verify):
+			e_verify = 'The two passwords do not match'
+		if not email:
+			e_email = 'That is not a valid email'
+
+		if password and (not e_verify) and name and email:
+			self.redirect('/welcome?username=%s' % user_name)
+		else:
+			self.write_form(user_name, user_email, e_name, e_pass, e_verify, e_email)
+
+class WelcomeHandler(webapp2.RequestHandler):
+	def get(self):
+		username = self.request.get('username')
+		self.response.out.write(welcom_form % username)
 
 app = webapp2.WSGIApplication([
-    ('/', MainHandler)
+	('/', SignupHandler),
+	('/welcome', WelcomeHandler)
 ], debug=True)
